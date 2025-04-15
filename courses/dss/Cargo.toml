@@ -4,5 +4,6 @@ members = [
     "labrpc",
     "linearizability",
     "raft",
-    "percolator"
+    "percolator",
+    "percolator/proto"
 ]

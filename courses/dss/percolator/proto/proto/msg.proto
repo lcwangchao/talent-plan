@@ -9,11 +9,13 @@
 
 syntax = "proto3";
 
-package msg;
+package message;
 
 message TimestampRequest {}
 
-message TimestampResponse {}
+message TimestampResponse {
+  uint64 timestamp = 1;
+}
 
 message GetRequest {}
 
@@ -24,7 +26,7 @@ message PrewriteRequest {}
 message PrewriteResponse {}
 
 message CommitRequest {
-    bool is_primary = 1;
+  bool is_primary = 1;
 }
 
 message CommitResponse {}

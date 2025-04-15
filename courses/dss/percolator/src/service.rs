@@ -1,4 +1,4 @@
-use crate::msg::{
+use percolator_proto::message::{
     CommitRequest, CommitResponse, GetRequest, GetResponse, PrewriteRequest, PrewriteResponse,
     TimestampRequest, TimestampResponse,
 };

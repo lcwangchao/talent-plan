@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::msg::*;
-use crate::service::*;
-use crate::*;
+use crate::service::{timestamp, transaction};
+use percolator_proto::message::*;
 
 // TTL is used for a lock key.
 // If the key's lifetime exceeds this value, it should be cleaned up.
@@ -13,15 +13,22 @@ const TTL: u64 = Duration::from_millis(100).as_nanos() as u64;
 
 #[derive(Clone, Default)]
 pub struct TimestampOracle {
-    // You definitions here if needed.
+    ts: Arc<AtomicU64>,
 }
 
 #[async_trait::async_trait]
 impl timestamp::Service for TimestampOracle {
     // example get_timestamp RPC handler.
     async fn get_timestamp(&self, _: TimestampRequest) -> labrpc::Result<TimestampResponse> {
-        // Your code here.
-        unimplemented!()
+        let mut ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        ts = ts << 18 | 1;
+        if self.ts.fetch_max(ts, Ordering::SeqCst) >= ts {
+            ts = self.ts.fetch_add(1, Ordering::SeqCst) + 1;
+        }
+        Ok(TimestampResponse { timestamp: ts })
     }
 }
 

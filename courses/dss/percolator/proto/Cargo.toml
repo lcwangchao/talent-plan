@@ -1,0 +1,12 @@
+[package]
+name = "percolator_proto"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+prost = "0.6"
+prost-derive = "0.6"
+
+[build-dependencies]
+prost-build = "0.6"

@@ -1,3 +1,4 @@
+use env_logger::Env;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -21,7 +22,7 @@ struct CommitHooks {
 impl RpcHooks for CommitHooks {
     fn before_dispatch(&self, fq_name: &str, req: &[u8]) -> Result<()> {
         if self.drop_req.load(Ordering::Relaxed) && fq_name == "transaction.commit" {
-            let m = crate::msg::CommitRequest::decode(req).unwrap();
+            let m = percolator_proto::message::CommitRequest::decode(req).unwrap();
             if m.is_primary && !self.fail_primary.load(Ordering::Relaxed) {
                 return Ok(());
             }
@@ -40,7 +41,9 @@ impl RpcHooks for CommitHooks {
 fn init_logger() {
     use std::sync::Once;
     static LOGGER_INIT: Once = Once::new();
-    LOGGER_INIT.call_once(env_logger::init);
+    LOGGER_INIT.call_once(|| {
+        env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    });
 }
 
 fn init(num_clinet: usize) -> (Network, Vec<Client>, Arc<CommitHooks>) {
@@ -83,6 +86,38 @@ fn init(num_clinet: usize) -> (Network, Vec<Client>, Arc<CommitHooks>) {
     }
 
     (rn, clients, hook)
+}
+
+#[test]
+fn test_smoke() {
+    let tso_server_name = "tso_server";
+    let tso_client_name = "tso_client";
+    let mut tso_server_builder = ServerBuilder::new(tso_server_name.to_owned());
+    let tso: TimestampOracle = Default::default();
+    add_tso_service(tso, &mut tso_server_builder).unwrap();
+    let tso_server = tso_server_builder.build();
+
+    let rn = Network::new();
+    rn.add_server(tso_server);
+    let cli = Client::new(
+        TSOClient::new(rn.create_client(tso_client_name.to_string())),
+        TransactionClient::new(rn.create_client("txn".to_string())),
+    );
+    rn.enable(tso_client_name, true);
+    rn.connect(tso_client_name, tso_server_name);
+    for _ in 0..10 {
+        match cli.get_timestamp() {
+            Ok(ts) => {
+                println!("TSO: {}", ts)
+            }
+            Err(Error::Timeout) => {
+                println!("TimeoutError!");
+            }
+            Err(err) => {
+                println!("OtherError: {}", err.to_string());
+            }
+        };
+    }
 }
 
 #[test]
