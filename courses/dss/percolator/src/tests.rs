@@ -161,7 +161,6 @@ fn test_predicate_many_preceders_read_predicates() {
     client0.set(b"1".to_vec(), b"10".to_vec());
     client0.set(b"2".to_vec(), b"20".to_vec());
     assert_eq!(client0.commit(), Ok(true));
-
     let mut client1 = clients[1].to_owned();
     client1.begin();
     assert_eq!(client1.get(b"3".to_vec()), Ok(Vec::new()));
